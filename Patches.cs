@@ -13,14 +13,26 @@ namespace BuilderTools
 {
     internal static class Patches
     {
-        [HarmonyPatch(typeof(ManPointer), "OnMouse")]
-        private static class ManControllerTechBuilder_SpawnNewPaintingBlock
+        private static class ManPointer_Patches
         {
-            private static void Prefix()
+            [HarmonyPatch(typeof(ManPointer), nameof(OnMouse))]
+            private static class OnMouse
             {
-                if (Input.GetMouseButton(0) && Input.GetKey(BlockPicker.block_picker_key) && ManPlayer.inst.PaletteUnlocked)
+                private static void Prefix()
                 {
-                    ManPointer.inst.ChangeBuildMode((ManPointer.BuildingMode)10);
+                    if (Input.GetMouseButton(0) && Input.GetKey(Main.config.BlockPickerKey) && ManPlayer.inst.PaletteUnlocked)
+                    {
+                        ManPointer.inst.ChangeBuildMode((ManPointer.BuildingMode)10);
+                    }
+                }
+            }
+
+            [HarmonyPatch(typeof(ManPointer), nameof(TrySpawnPaintingBlock), new Type[0])]
+            private static class TrySpawnPaintingBlock
+            {
+                private static void Postfix(Visible __result)
+                {
+                    //BlockLine.inst.ResetState();
                 }
             }
         }
@@ -60,11 +72,7 @@ namespace BuilderTools
             [HarmonyPatch(typeof(UIPaletteBlockSelect), "Update")]
             private static class Update
             {
-                private static readonly BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Instance;
-
                 private static readonly FieldInfo
-                    m_CategoryToggles = AccessTools.Field(typeof(UIPaletteBlockSelect), "m_CategoryToggles"),
-                    m_Controller = AccessTools.Field(typeof(UICategoryToggles), "m_Controller"),
                     m_Entries = AccessTools.Field(typeof(UITogglesController), "m_Entries"),
                     m_Toggle = AccessTools.Inner(typeof(UITogglesController), "ToggleEntry").GetField("m_Toggle");
 
@@ -72,9 +80,12 @@ namespace BuilderTools
 
                 private static void Prefix(ref UIPaletteBlockSelect __instance)
                 {
-                    if (BuilderToolsMod.kbdCategroryKeys && __instance.IsExpanded && PaletteTextFilter.PreventPause())
+                    if (Main.config.kbdCategroryKeys
+                        && __instance.IsExpanded
+                        && PaletteTextFilter.PreventPause()
+                        && Singleton.Manager<ManInput>.inst.GetCurrentUIInputMode() == UIInputMode.BlockBuilding)
                     {
-                        var categoryToggles = (UICategoryToggles)m_CategoryToggles.GetValue(__instance);
+                        var categoryToggles = (UICategoryToggles)BlockPicker.m_CategoryToggles.GetValue(__instance);
 
                         int selected = -1;
 
@@ -89,7 +100,7 @@ namespace BuilderTools
 
                         if (selected >= 0)
                         {
-                            var controller = m_Controller.GetValue(categoryToggles);
+                            var controller = BlockPicker.m_Controller.GetValue(categoryToggles);
                             var entries = (IList)m_Entries.GetValue(controller);
                             var toggle = (ToggleWrapper)m_Toggle.GetValue(entries[selected]);
                             categoryToggles.GetAllToggle().isOn = false;
@@ -108,6 +119,18 @@ namespace BuilderTools
             private static bool Prefix()
             {
                 return PaletteTextFilter.PreventPause();
+            }
+        }
+
+        [HarmonyPatch(typeof(ManLooseBlocks), "RequestAttachBlock")]
+        private static class ManLooseBlocks_RequestAttachBlock
+        {
+            private static void Postfix(Tank tech, TankBlock block, IntVector3 pos, OrthoRotation rot)
+            {
+                if (!BlockLine.inst.self_call)
+                {
+                    BlockLine.inst.OnPlacement(tech, block, pos, rot);
+                }
             }
         }
     }

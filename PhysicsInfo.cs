@@ -15,8 +15,6 @@ namespace BuilderTools
         internal static GameObject COT;
         internal static GameObject COL;
 
-        internal static KeyCode centers_key = KeyCode.M;
-
         private float reference_velocity = 100;
         private bool use_tech_velocity = false;
 
@@ -46,7 +44,7 @@ namespace BuilderTools
 
         private void Update()
         {
-            if (Input.GetKey(KeyCode.LeftControl) && Input.GetKeyDown(centers_key))
+            if (Input.GetKey(KeyCode.LeftControl) && Input.GetKeyDown(Main.config.CentersKey))
             {
                 useGUILayout = !useGUILayout;
             }

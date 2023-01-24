@@ -7,9 +7,7 @@
 [Pp]roperties/
 [Pp]ackages/
 [Pp]ackages/**/*.*
-bin/Release/*
-bin/Release
-bin/Debug/*.*
+[Bb]in/*
 Assets/AssetStoreTools*
 
 # Visual Studio cache directory

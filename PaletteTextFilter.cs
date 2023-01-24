@@ -17,8 +17,6 @@ namespace BuilderTools
         public static readonly Font ExoRegular = fonts.First(f => f.name == "Exo-Regular");
         public static readonly Sprite TEXT_FIELD_VERT_LEFT = sprites.First(f => f.name.Contains("TEXT_FIELD_VERT_LEFT"));
 
-        public static bool clearOnCollapse = true;
-
         private static UIInputMode mode;
         private static bool wasFocused = false;
         private static InputField inputField;
@@ -29,7 +27,11 @@ namespace BuilderTools
 
         public static bool BlockFilterFunction(BlockTypes blockType)
         {
-            if (filter == "") return true;
+            if (filter == "")
+            {
+                return true;
+            }
+
             var blockName = StringLookup.GetItemName(ObjectTypes.Block, (int)blockType).ToLower();
             return blockName.Contains(filter.ToLower());
         }
@@ -81,11 +83,11 @@ namespace BuilderTools
             rect.anchoredPosition3D = new Vector3(-5, -5, 77);
             rect.sizeDelta = new Vector2(210, inputField_height);
 
-            var scrollviewRect = blockPalette.transform.Find("HUD_BlockPainting_BG/Scroll View") as RectTransform;
+            var scrollviewRect = (RectTransform)blockPalette.transform.Find("HUD_BlockPainting_BG/Scroll View");
             scrollviewRect.anchoredPosition -= heightVec;
             scrollviewRect.sizeDelta -= heightVec;
 
-            var scrollbarRect = blockPalette.transform.Find("HUD_BlockPainting_BG/Scrollbar") as RectTransform;
+            var scrollbarRect = (RectTransform)blockPalette.transform.Find("HUD_BlockPainting_BG/Scrollbar");
             scrollbarRect.anchoredPosition -= heightVec;
             scrollbarRect.sizeDelta -= heightVec;
 
@@ -129,7 +131,7 @@ namespace BuilderTools
 
         internal static void OnPaletteCollapse(bool collapse)
         {
-            if (clearOnCollapse && collapse)
+            if (Main.config.clearOnCollapse && collapse)
             {
                 ClearInput();
             }
