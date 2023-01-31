@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
@@ -13,8 +14,6 @@ namespace BuilderTools
         private static Tank dummy;
 
         private static BlockManager dummyTable;
-
-        private static TankBlock dummyRoot;
 
         private static UnityEngine.Animations.ParentConstraint dummyParent;
 
@@ -63,17 +62,12 @@ namespace BuilderTools
             dummy.visible.EnablePhysics(false);
             dummy.rbody.isKinematic = true;
             dummyTable = dummy.blockman;
-            var root = dummyTable.GetRootBlock();
-            dummyRoot = root;
-            Main.logger.Trace($"[PreviewPool] Dummy root: {dummyRoot.BlockType} at {dummyRoot.cachedLocalPosition}");
 
             dummyParent = dummy.gameObject.AddComponent<UnityEngine.Animations.ParentConstraint>();
             dummyParent.constraintActive = true;
             dummyParent.AddSource(new UnityEngine.Animations.ConstraintSource());
             dummyParent.SetTranslationOffset(0, Vector3.zero);
             dummyParent.SetRotationOffset(0, Vector3.zero);
-
-            root.gameObject.SetActive(false);
         }
 
         private static void PrepareBlockAPConnections(IEnumerable<BlockManager.BlockAttachment> attachments, Vector3 blockLocalPos, Quaternion blockLocalRot, TankBlock overrideOther = null)
@@ -144,29 +138,7 @@ namespace BuilderTools
         private static void ResetDummy(IntVector3 position)
         {
             Main.logger.Debug("[PreviewPool] Recentering dummy at: " + position);
-
-            if (!dummyTable.GetRootBlock())
-            {
-                Main.logger.Trace("[PreviewPool] Dummy root lost");
-
-                var cab = ManSpawn.inst.SpawnBlock(BlockTypes.GSOCockpit_111, Vector3.zero, Quaternion.identity);
-
-                RemoveAllBlocks.Invoke(dummyTable, new object[] { BlockManager.RemoveAllAction.HandOff });
-                dummyTable.AddBlockToTech(cab, position);
-                dummyTable.SetRootBlock(cab);
-                dummyRoot = cab;
-
-                Main.logger.Trace($"[PreviewPool] New dummy root: {dummyRoot.BlockType} at {dummyRoot.cachedLocalPosition}");
-            }
-            else
-            {
-                dummyTable.Detach(dummyRoot, true, false, false);
-                RemoveAllBlocks.Invoke(dummyTable, new object[] { BlockManager.RemoveAllAction.HandOff });
-                dummyTable.AddBlockToTech(dummyRoot, position);
-                dummyTable.SetRootBlock(dummyRoot);
-            }
-
-            dummyRoot.gameObject.SetActive(false);
+            RemoveAllBlocks.Invoke(dummyTable, new object[] { BlockManager.RemoveAllAction.HandOff });
         }
 
         public void SetType(BlockTypes type)
@@ -211,7 +183,7 @@ namespace BuilderTools
 
         public void Preview(IntVector3Interval interval, Tank tech, OrthoRotation rot)
         {
-            var size = interval.MaxAxisDiffAbsolute; // - 1;
+            var size = interval.Size;
             Main.logger.Trace($"[PreviewPool] Interval start-end: {interval.Start}-{interval.End}");
             Main.logger.Debug("[PreviewPool] Interval size: " + size);
 
@@ -222,6 +194,39 @@ namespace BuilderTools
 
             Fit(size);
 
+            dummy.gameObject.SetActive(true);
+
+            dummyParent.SetSource(0, new UnityEngine.Animations.ConstraintSource()
+            {
+                sourceTransform = tech.trans,
+                weight = 1
+            });
+
+            ResetDummy(interval.Start);
+
+            int i = 0;
+            foreach (var pos in interval)
+            {
+                Main.logger.Debug($"[PreviewPool] Preview #{i} at {pos}");
+                var preview = previews[i];
+
+                HandlePlacementPreviews(preview, tech, pos, rot);
+
+                var blockat = tech.blockman.GetBlockAtPosition(pos);
+                if (blockat)
+                {
+                    Main.logger.Debug($"[PreviewPool] Block {blockat.BlockType} at {pos}, hiding preview");
+                    preview.block.gameObject.SetActive(false);
+                }
+                else
+                {
+                    preview.block.gameObject.SetActive(true);
+                }
+
+                i++;
+            }
+
+            size = i;
             if (previews.Count > size)
             {
                 var excess = previews.GetRange(size, previews.Count - size);
@@ -232,35 +237,21 @@ namespace BuilderTools
                 }
             }
 
-            dummy.gameObject.SetActive(true);
-            //dummy.transform.SetParent(tech.trans, false);
-
-            dummyParent.SetSource(0, new UnityEngine.Animations.ConstraintSource()
+            /*if (interval.Type == IntVector3Interval.IterationType.MaxAxis)
             {
-                sourceTransform = tech.trans,
-                weight = 1
-            });
-
-            ResetDummy(interval.Start);
-
-            interval.IteratePositions((pos, i) =>
-            {
-                Main.logger.Trace($"[PreviewPool] Preview #{i} at {pos}");
                 var preview = previews[i];
+                var diff = (interval.End - preview.block.cachedLocalPosition).normalized;
 
-                HandlePlacementPreviews(preview, tech, pos, rot);
+                HandlePlacementPreviews(preview, tech, interval.End, rot);
 
-                var blockat = tech.blockman.GetBlockAtPosition(pos);
-                if (blockat)
+                var trueline = Math.Abs(diff.x + diff.y + diff.z).Approximately(1);
+                preview.block.gameObject.SetActive(trueline);
+
+                if (!trueline)
                 {
-                    Main.logger.Trace($"[PreviewPool] Block {blockat.BlockType} at {pos}, hiding preview");
-                    preview.block.gameObject.SetActive(false);
+                    Main.logger.Trace($"[PreviewPool] Hiding last preview at {interval.End}");
                 }
-                else
-                {
-                    preview.block.gameObject.SetActive(true);
-                }
-            }, includeEnd: true);
+            }*/
 
             ClearLastPlacements();
             HashSet<IBlockPlacementPreview> lastPlacementPreviews = m_LastPlacementPreviews;

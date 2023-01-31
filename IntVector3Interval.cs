@@ -4,122 +4,13 @@ using System.Collections.Generic;
 
 namespace BuilderTools
 {
-    public class IntVector3Interval
-    {
-        private IntVector3 start;
-        private IntVector3 end;
-
-        private int maxAxis;
-        private int maxAxisDiff;
-        private int maxAxisDiffAbsolute;
-        private int maxAxisDir;
-        private int maxAxisStart;
-        private int maxAxisEnd;
-
-        public IntVector3 Start
-        {
-            get => start;
-            set
-            {
-                if (start != value)
-                {
-                    start = value;
-                    Recalc();
-                }
-            }
-        }
-
-        public IntVector3 End
-        {
-            get => end;
-            set
-            {
-                if (end != value)
-                {
-                    end = value;
-                    Recalc();
-                }
-            }
-        }
-
-        public int MaxAxis => maxAxis;
-
-        public int MaxAxisDiff => maxAxisDiff;
-
-        public int MaxAxisDiffAbsolute => maxAxisDiffAbsolute;
-
-        public int MaxAxisDir => maxAxisDir;
-
-        public int MaxAxisStart => maxAxisStart;
-
-        public int MaxAxisEnd => maxAxisEnd;
-
-        public IntVector3Interval()
-        {
-            this.start = this.end = IntVector3.zero;
-        }
-
-        public IntVector3Interval(IntVector3 start, IntVector3 end, bool calc = true)
-        {
-            this.start = start;
-            this.end = end;
-
-            if (calc)
-            {
-                Recalc();
-            }
-        }
-
-        private void Recalc()
-        {
-            var maxi = 0;
-            var max = 0;
-
-            for (int i = 0; i < 3; i++)
-            {
-                var diff = end[i] - start[i];
-
-                if (Math.Abs(diff) > Math.Abs(max))
-                {
-                    max = diff;
-                    maxi = i;
-                }
-            }
-
-            maxAxis = maxi;
-            maxAxisDiff = max;
-            maxAxisDiffAbsolute = Math.Abs(max);
-            maxAxisDir = Math.Sign(max);
-            maxAxisStart = start[maxi];
-            maxAxisEnd = end[maxi];
-        }
-
-        public void IteratePositions(Action<IntVector3, int> action, bool skipFirst = true, bool includeEnd = false)
-        {
-            var inc = this.MaxAxisDir;
-            var start = this.MaxAxisStart + (skipFirst ? inc : 0);
-            var end = this.MaxAxisEnd + (includeEnd ? inc : 0);
-            var axis = this.MaxAxis;
-
-            var startPos = this.Start;
-
-            for (int i = start; i != end; i += inc)
-            {
-                var pos = startPos;
-                pos[axis] = i;
-
-                action(pos, Math.Abs(i - start));
-            }
-        }
-    }
-
-    public class IntVector3Interval_ : IEnumerable<IntVector3>
+    public class IntVector3Interval : IEnumerable<IntVector3>
     {
         public enum IterationType
         {
             MaxAxis,
-            Diagonal,
-            Lines
+            Lines3D,
+            //Diagonal,
         }
 
         public enum Axis
@@ -129,7 +20,7 @@ namespace BuilderTools
             Z
         }
 
-        private int[] axisOrder = new int[] { 0, 1, 2 };
+        private readonly int[] axisOrder = { 0, 1, 2 };
 
         private IntVector3 start;
         private IntVector3 end;
@@ -166,7 +57,7 @@ namespace BuilderTools
             }
         }
 
-        private IterationType Type
+        public IterationType Type
         {
             get => type;
 
@@ -182,12 +73,12 @@ namespace BuilderTools
         
         public int Size => size;
 
-        public IntVector3Interval_()
+        public IntVector3Interval()
         {
             this.start = this.end = IntVector3.zero;
         }
 
-        public IntVector3Interval_(IntVector3 start, IntVector3 end)
+        public IntVector3Interval(IntVector3 start, IntVector3 end)
         {
             this.start = start;
             this.end = end;
@@ -209,10 +100,10 @@ namespace BuilderTools
                 case IterationType.MaxAxis:
                     RecalcMaxAxis();
                     break;
-                case IterationType.Diagonal:
-                    break;
-                case IterationType.Lines:
+                case IterationType.Lines3D:
                     RecalcLines();
+                    break;
+                default:
                     break;
             }
         }
@@ -235,16 +126,20 @@ namespace BuilderTools
 
             maxAxis = maxi;
             maxAxisDir = Math.Sign(max);
-            size = max;
+            size = Math.Abs(max);
         }
 
         private void RecalcLines()
         {
             var diff = end - start;
-            size = Math.Abs(diff.x) + Math.Abs(diff.y) + Math.Abs(diff.z) - 2;
+            size = 0;
+            for (int i = 0; i < 3; i++)
+            {
+                size += Math.Abs(diff[i]);
+            }
         }
 
-        private IEnumerable<IntVector3> MaxAxis(bool skipFirst, bool includeEnd)
+        private IEnumerable<IntVector3> MaxAxis(bool skipFirst = true, bool includeEnd = false)
         {
             var startPos = this.start;
 
@@ -260,53 +155,60 @@ namespace BuilderTools
             }
         }
 
-        private IEnumerable<IntVector3> Lines(bool skipFirst, bool includeEnd)
+        private IEnumerable<IntVector3> Lines3D(bool skipFirst = true, bool includeEnd = false)
         {
-            var current = start;
+            var currentStart = start;
             for (int a = 0; a < 3; a++)
             {
                 var axis = axisOrder[a];
-                var axis_diff = (end - start)[axis];
-                var axis_dir = Math.Sign(axis_diff);
-
-                int i = (a == 0 && skipFirst ? axis_dir : 0);
-
-                if (includeEnd && axis == 2)
+                IntVector3 temp = currentStart;
+                Main.logger.Trace($"[Interval] Lines start: {currentStart}, end: {end}, axis: {axis}, a: {a}");
+                foreach (var current in Line(currentStart, end, axis, (skipFirst && a == 0) || a != 0, (includeEnd && a == 2) || a != 2))
                 {
-                    axis_diff += axis_dir;
+                    temp = current;
+                    yield return current;
                 }
-
-                var pos = current;
-                for (; i != axis_diff; i += axis_dir)
-                {
-                    pos = current;
-                    pos[axis] = i;
-
-                    yield return pos;
-                }
-
-                current = pos;
+                currentStart = temp;
             }
+
         }
 
-        public IEnumerator<IntVector3> GetEnumerator(bool skipFirst = true, bool includeEnd = false)
+        public static IEnumerable<IntVector3> Line(IntVector3 start, IntVector3 end, int axis, bool skipFirst = true, bool includeEnd = false)
         {
-            switch (type)
+            var diff = (end - start)[axis];
+            var dir = Math.Sign(diff);
+
+            if (dir == 0)
             {
-                case IterationType.MaxAxis:
-                    return MaxAxis(skipFirst, includeEnd).GetEnumerator();
-                case IterationType.Diagonal:
-                    return null;
-                case IterationType.Lines:
-                    return Lines(skipFirst, includeEnd).GetEnumerator();
-                default:
-                    return null;
+                yield break;
+            }
+
+            if (includeEnd)
+            {
+                diff += dir;
+            }
+
+            var i = skipFirst ? dir : 0;
+            for (; i != diff; i += dir)
+            {
+                var pos = start;
+                pos[axis] += i;
+
+                yield return pos;
             }
         }
 
         public IEnumerator<IntVector3> GetEnumerator()
         {
-            return GetEnumerator(true, false);
+            switch (type)
+            {
+                case IterationType.MaxAxis:
+                    return MaxAxis().GetEnumerator();
+                case IterationType.Lines3D:
+                    return Lines3D().GetEnumerator();
+                default:
+                    return (IEnumerator<IntVector3>)Array.Empty<IntVector3>().GetEnumerator();
+            }
         }
 
         IEnumerator IEnumerable.GetEnumerator()

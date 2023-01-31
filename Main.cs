@@ -160,7 +160,7 @@ namespace BuilderTools
         }
 
         private static bool Inited = false;
-        private static ModContainer BuilderToolsContainer;
+        internal static ModContainer BuilderToolsContainer;
 
         public override void EarlyInit()
         {
@@ -206,15 +206,9 @@ namespace BuilderTools
             public int centers_key = (int)KeyCode.M;
             public bool kbdCategroryKeys = false;
 
-            public KeyCode BlockPickerKey
-            {
-                get => (KeyCode)block_picker_key;
-            }
+            public KeyCode BlockPickerKey => (KeyCode)block_picker_key;
 
-            public KeyCode CentersKey
-            {
-                get => (KeyCode)centers_key;
-            }
+            public KeyCode CentersKey => (KeyCode)centers_key;
         }
     }
 }

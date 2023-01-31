@@ -11,12 +11,6 @@ namespace BuilderTools
         private static readonly FieldInfo m_UpdateGrid = BlockPicker.T_UIPaletteBlockSelect.GetField("m_UpdateGrid", BindingFlags.NonPublic | BindingFlags.Instance);
         public static MethodInfo SetUIInputMode = typeof(ManInput).GetMethod("SetUIInputMode", BindingFlags.NonPublic | BindingFlags.Instance);
 
-        public static readonly Font[] fonts = Resources.FindObjectsOfTypeAll<Font>();
-        public static readonly Sprite[] sprites = Resources.FindObjectsOfTypeAll<Sprite>();
-
-        public static readonly Font ExoRegular = fonts.First(f => f.name == "Exo-Regular");
-        public static readonly Sprite TEXT_FIELD_VERT_LEFT = sprites.First(f => f.name.Contains("TEXT_FIELD_VERT_LEFT"));
-
         private static UIInputMode mode;
         private static bool wasFocused = false;
         private static InputField inputField;
@@ -42,12 +36,12 @@ namespace BuilderTools
             m_UpdateGrid.SetValue(blockPalette, true);
         }
 
-        public static void Init(UIPaletteBlockSelect palette)
+        public static void InitUI(UIPaletteBlockSelect palette)
         {
             blockPalette = palette;
             var inputFieldGo = DefaultControls.CreateInputField(new DefaultControls.Resources()
             {
-                inputField = TEXT_FIELD_VERT_LEFT
+                inputField = UI.TEXT_FIELD_VERT_LEFT
             });
 
             inputField = inputFieldGo.GetComponent<InputField>();
@@ -62,7 +56,7 @@ namespace BuilderTools
             {
                 text.text = "";
                 text.alignment = TextAnchor.MiddleLeft;
-                text.font = ExoRegular;
+                text.font = UI.ExoRegular;
                 text.fontSize = 20;
                 text.fontStyle = FontStyle.Italic;
                 text.color = textColor;

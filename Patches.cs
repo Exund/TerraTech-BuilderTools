@@ -27,12 +27,15 @@ namespace BuilderTools
                 }
             }
 
-            [HarmonyPatch(typeof(ManPointer), nameof(TrySpawnPaintingBlock), new Type[0])]
-            private static class TrySpawnPaintingBlock
+            [HarmonyPatch(typeof(ManPointer), nameof(RemovePaintingBlock))]
+            private static class RemovePaintingBlock
             {
-                private static void Postfix(Visible __result)
+                private static void Postfix()
                 {
-                    //BlockLine.inst.ResetState();
+                    if (!ManPointer.inst.IsPaintingBlocked)
+                    {
+                        BlockLine.inst.ResetState();
+                    }
                 }
             }
         }
@@ -56,7 +59,8 @@ namespace BuilderTools
             {
                 private static void Postfix(ref UIPaletteBlockSelect __instance)
                 {
-                    PaletteTextFilter.Init(__instance);
+                    PaletteTextFilter.InitUI(__instance);
+                    BlockLine.InitUI(__instance);
                 }
             }
 
@@ -111,6 +115,15 @@ namespace BuilderTools
                     }
                 }
             }
+
+            [HarmonyPatch(typeof(UIPaletteBlockSelect), "OnSwitchToGrabButton")]
+            private static class OnSwitchToGrabButton
+            {
+                private static void Postfix()
+                {
+                    BlockLine.inst.SetLineMode(false);
+                }
+            }
         }
 
         [HarmonyPatch(typeof(ManPauseGame), "TogglePauseMenu")]
@@ -127,10 +140,7 @@ namespace BuilderTools
         {
             private static void Postfix(Tank tech, TankBlock block, IntVector3 pos, OrthoRotation rot)
             {
-                if (!BlockLine.inst.self_call)
-                {
-                    BlockLine.inst.OnPlacement(tech, block, pos, rot);
-                }
+                BlockLine.inst.OnPlacement(tech, block, pos, rot);
             }
         }
     }
