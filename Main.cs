@@ -149,6 +149,7 @@ namespace BuilderTools
                 NativeOptionsMod.onOptionsSaved.AddListener(() => { configFile.WriteConfigJsonFile(); });
 
                 SetupCOM();
+                UI.Init(BuilderToolsContainer.Contents);
                 holder.AddComponent<PhysicsInfo>();
                 holder.AddComponent<PaletteTextFilter>();
                 holder.AddComponent<BlockLine>();

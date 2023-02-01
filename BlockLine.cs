@@ -82,6 +82,8 @@ namespace BuilderTools
 
         private static readonly MethodInfo SetGrabModeActive = AccessTools.Method(BlockPicker.T_UIPaletteBlockSelect, nameof(SetGrabModeActive));
 
+        private static GUISkin skin;
+
         public void Start()
         {
             ManGameMode.inst.ModeStartEvent.Subscribe(OnModeStart);
@@ -137,27 +139,113 @@ namespace BuilderTools
 
         public void Update()
         {
+            if (!blockPalette || !blockPalette.IsExpanded)
+            {
+                SetLineMode(false);
+            }
+
             if (Event.current.alt && Input.GetKeyDown(KeyCode.L))
             {
                 SetLineMode(!line_mode);
-            }
-
-            if (Event.current.alt && Input.GetKeyDown(KeyCode.Minus))
-            {
-                useGUILayout = !useGUILayout;
             }
         }
 
         public void OnGUI()
         {
+            if (!skin)
+            {
+                skin = GameObject.Instantiate(GUI.skin);
+                skin.font = UI.ExoRegular;
+                skin.label.normal.textColor = UI.normal_text;
+                skin.label.richText = true;
+                skin.label.fontStyle = FontStyle.BoldAndItalic;
+                skin.label.alignment = TextAnchor.MiddleLeft;
+                skin.label.padding.bottom = 0;
+            }
+
             if (!useGUILayout)
             {
                 return;
             }
 
-            var height = currentInterval.Type == IntVector3Interval.IterationType.Lines3D ? 250 : 75;
+            var tempskin = GUI.skin;
+            GUI.skin = skin;
 
-            GUI.Window(ID, new Rect(Screen.width - 100, (Screen.height - height) * 0.5f, 100, height), DoWindow, "Block Lines");
+            var corners = new Vector3[4];
+            var rect = lineButton.GetComponent<RectTransform>();
+            rect.ForceUpdateRectTransforms();
+
+            rect.GetWorldCorners(corners);
+
+
+            Camera canvasCam = rect.GetComponentInParent<Canvas>().worldCamera;
+
+            var trc = RectTransformUtility.WorldToScreenPoint(canvasCam, corners[2]);
+            trc.y = Screen.height - trc.y;
+
+            var width = currentInterval.Type == IntVector3Interval.IterationType.Lines3D ? 250 : 100;
+            Vector2 position = trc + new Vector2(10, 0);
+
+            /*var mouse = Input.mousePosition;
+            mouse.y = Screen.height - mouse.y;
+
+            GUI.Label(new Rect(200, 0, Screen.width - 200, 50), 
+                "TRC: " + corners[2]
+                    + " TRCs: " + trc
+                    + " Mouse: " + mouse
+                    , new GUIStyle(GUI.skin.label) { fontStyle = FontStyle.Normal });*/
+
+            var size = new Vector2(width, 2*64);
+
+            GUI.color = new Color(1, 1, 1, 0.627f);
+            GUILayout.BeginArea(new Rect(position, size), UI.RBRC_panel);
+            GUI.color = Color.white;
+            {
+                GUILayout.BeginHorizontal();
+                {
+                    var mh = GUILayout.Height(64);
+                    var mw = GUILayout.Width(64);
+
+                    GUILayout.BeginVertical();
+                    {
+                        GUILayout.Label("Line type");
+
+                        var type = (IntVector3Interval.IterationType)GUILayout.SelectionGrid((int)currentInterval.Type, IterationTypes, 1, UI.Blue_btn, mw, mh);
+                        if (type != currentInterval.Type)
+                        {
+                            currentInterval.Type = type;
+                            Main.logger.Info("Interval type set to " + type);
+                        }
+                    }
+                    GUILayout.EndVertical();
+
+                    if (currentInterval.Type == IntVector3Interval.IterationType.Lines3D)
+                    {
+                        GUILayout.BeginVertical();
+                        {
+                            GUILayout.Label("Axes order");
+
+                            var prev = selectedAxisConfig;
+                            selectedAxisConfig = GUILayout.SelectionGrid(selectedAxisConfig, axisConfigsString, 3, UI.Blue_btn, mw, mh);
+                            if (prev != selectedAxisConfig)
+                            {
+                                var config = axisConfigs[selectedAxisConfig];
+
+                                currentInterval.SetAxisOrder(config.a, config.b, config.c);
+                            }
+                        }
+                        GUILayout.EndVertical();
+                    }
+                }
+                GUILayout.EndHorizontal();
+            }
+            GUILayout.EndArea();
+
+            //var height = currentInterval.Type == IntVector3Interval.IterationType.Lines3D ? 250 : 75;
+
+            //GUI.Window(ID, new Rect(Screen.width - 100, (Screen.height - height) * 0.5f, 100, height), DoWindow, "Block Lines");
+
+            GUI.skin = tempskin;
         }
 
         private void DoWindow(int id)
@@ -189,6 +277,11 @@ namespace BuilderTools
 
         public void SetLineMode(bool enabled)
         {
+            if (line_mode == enabled)
+            {
+                return;
+            }
+
             line_mode = enabled;
             Main.logger.Info("BlockLine " + (line_mode ? "enabled" : "disabled"));
             ResetState(false);
@@ -200,7 +293,11 @@ namespace BuilderTools
                 self_call = false;
             }
 
-            lineButton.interactable = !enabled;
+            var c = lineButton.colors;
+            c.highlightedColor = c.normalColor = enabled ? UI.orange : UI.grey;
+            lineButton.colors = c;
+
+            useGUILayout = enabled;
         }
 
         public void OnPlacement(Tank tech, TankBlock block, IntVector3 pos, OrthoRotation rot)
@@ -312,13 +409,12 @@ namespace BuilderTools
             var lbb = lineButton.GetComponent<Button>();
             lbb.transition = Selectable.Transition.ColorTint;
             var colors = lbb.colors;
-            colors.normalColor = new Color(0.278f, 0.278f, 0.278f, 1);
-            colors.disabledColor = new Color(0.718f, 0.553f, 0.149f, 1);
+            colors.highlightedColor = colors.normalColor = UI.grey;
             lbb.colors = colors;
 
             lbb.onClick.AddListener(() =>
             {
-                BlockLine.inst.SetLineMode(true);
+                BlockLine.inst.SetLineMode(!BlockLine.inst.line_mode);
             });
 
             var tooltip = lineButton.AddComponent<TooltipComponent>();

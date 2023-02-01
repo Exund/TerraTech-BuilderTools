@@ -50,7 +50,7 @@ namespace BuilderTools
             var image = inputFieldGo.GetComponent<Image>();
             image.color = new Color(0.2745f, 0.2745f, 0.2745f);
 
-            var textColor = new Color(0.4666f, 0.7529f, 1f);
+            var textColor = UI.blue;
 
             foreach (var text in inputFieldGo.GetComponentsInChildren<Text>())
             {
@@ -66,7 +66,7 @@ namespace BuilderTools
             inputField.placeholder.enabled = true;
             var placeholderText = inputField.placeholder.GetComponent<Text>();
             placeholderText.text = "Block name";
-            placeholderText.color = new Color(0.6784f, 0.6784f, 0.6784f);
+            placeholderText.color = UI.normal_text;
 
             var inputField_height = 40f;
             var heightVec = new Vector2(0, inputField_height);
