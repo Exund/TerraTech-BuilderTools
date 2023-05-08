@@ -13,14 +13,29 @@ namespace BuilderTools
 {
     internal static class Patches
     {
-        [HarmonyPatch(typeof(ManPointer), "OnMouse")]
-        private static class ManControllerTechBuilder_SpawnNewPaintingBlock
+        private static class ManPointer_Patches
         {
-            private static void Prefix()
+            [HarmonyPatch(typeof(ManPointer), nameof(OnMouse))]
+            private static class OnMouse
             {
-                if (Input.GetMouseButton(0) && Input.GetKey(BlockPicker.block_picker_key) && ManPlayer.inst.PaletteUnlocked)
+                private static void Prefix()
                 {
-                    ManPointer.inst.ChangeBuildMode((ManPointer.BuildingMode)10);
+                    if (Input.GetMouseButton(0) && Input.GetKey(Main.config.BlockPickerKey) && ManPlayer.inst.PaletteUnlocked)
+                    {
+                        ManPointer.inst.ChangeBuildMode((ManPointer.BuildingMode)10);
+                    }
+                }
+            }
+
+            [HarmonyPatch(typeof(ManPointer), nameof(RemovePaintingBlock))]
+            private static class RemovePaintingBlock
+            {
+                private static void Postfix()
+                {
+                    if (!ManPointer.inst.IsPaintingBlocked)
+                    {
+                        BlockLine.inst.ResetState();
+                    }
                 }
             }
         }
@@ -44,7 +59,8 @@ namespace BuilderTools
             {
                 private static void Postfix(ref UIPaletteBlockSelect __instance)
                 {
-                    PaletteTextFilter.Init(__instance);
+                    PaletteTextFilter.InitUI(__instance);
+                    BlockLine.InitUI(__instance);
                 }
             }
 
@@ -54,17 +70,14 @@ namespace BuilderTools
                 private static void Postfix(ref bool __result)
                 {
                     PaletteTextFilter.OnPaletteCollapse(__result);
+                    BlockLine.inst.OnPaletteCollapse(__result);
                 }
             }
 
             [HarmonyPatch(typeof(UIPaletteBlockSelect), "Update")]
             private static class Update
             {
-                private static readonly BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Instance;
-
                 private static readonly FieldInfo
-                    m_CategoryToggles = AccessTools.Field(typeof(UIPaletteBlockSelect), "m_CategoryToggles"),
-                    m_Controller = AccessTools.Field(typeof(UICategoryToggles), "m_Controller"),
                     m_Entries = AccessTools.Field(typeof(UITogglesController), "m_Entries"),
                     m_Toggle = AccessTools.Inner(typeof(UITogglesController), "ToggleEntry").GetField("m_Toggle");
 
@@ -72,9 +85,12 @@ namespace BuilderTools
 
                 private static void Prefix(ref UIPaletteBlockSelect __instance)
                 {
-                    if (BuilderToolsMod.kbdCategroryKeys && __instance.IsExpanded && PaletteTextFilter.PreventPause())
+                    if (Main.config.kbdCategroryKeys
+                        && __instance.IsExpanded
+                        && PaletteTextFilter.PreventPause()
+                        && Singleton.Manager<ManInput>.inst.GetCurrentUIInputMode() == UIInputMode.BlockBuilding)
                     {
-                        var categoryToggles = (UICategoryToggles)m_CategoryToggles.GetValue(__instance);
+                        var categoryToggles = (UICategoryToggles)BlockPicker.m_CategoryToggles.GetValue(__instance);
 
                         int selected = -1;
 
@@ -89,7 +105,7 @@ namespace BuilderTools
 
                         if (selected >= 0)
                         {
-                            var controller = m_Controller.GetValue(categoryToggles);
+                            var controller = BlockPicker.m_Controller.GetValue(categoryToggles);
                             var entries = (IList)m_Entries.GetValue(controller);
                             var toggle = (ToggleWrapper)m_Toggle.GetValue(entries[selected]);
                             categoryToggles.GetAllToggle().isOn = false;
@@ -100,6 +116,15 @@ namespace BuilderTools
                     }
                 }
             }
+
+            [HarmonyPatch(typeof(UIPaletteBlockSelect), "OnSwitchToGrabButton")]
+            private static class OnSwitchToGrabButton
+            {
+                private static void Postfix()
+                {
+                    BlockLine.inst.SetLineMode(false);
+                }
+            }
         }
 
         [HarmonyPatch(typeof(ManPauseGame), "TogglePauseMenu")]
@@ -108,6 +133,15 @@ namespace BuilderTools
             private static bool Prefix()
             {
                 return PaletteTextFilter.PreventPause();
+            }
+        }
+
+        [HarmonyPatch(typeof(ManLooseBlocks), "RequestAttachBlock")]
+        private static class ManLooseBlocks_RequestAttachBlock
+        {
+            private static void Postfix(Tank tech, TankBlock block, IntVector3 pos, OrthoRotation rot)
+            {
+                BlockLine.inst.OnPlacement(tech, block, pos, rot);
             }
         }
     }

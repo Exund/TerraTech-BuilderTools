@@ -12,14 +12,16 @@ using ModHelper;
 
 namespace BuilderTools
 {
-    public class BuilderToolsMod : ModBase
+    public class Main : ModBase
     {
-        private static GameObject holder;
-        internal static ModConfig config = new ModConfig();
-        internal const string HarmonyID = "exund.buildertools";
+        internal const string HarmonyID = "Exund.BuilderTools";
         internal static Harmony harmony = new Harmony(HarmonyID);
 
-        internal static bool kbdCategroryKeys = false;
+        internal static Logger logger;
+        internal static ModConfig configFile = new ModConfig();
+        internal static Config config = new Config();
+
+        private static GameObject holder;
 
         private static void SetupCOM()
         {
@@ -36,9 +38,9 @@ namespace BuilderTools
             {
                 if (obj != null)
                 {
-                    if (obj is Mesh mesh1)
+                    if (obj is Mesh m)
                     {
-                        mesh = mesh1;
+                        mesh = m;
                         break;
                     }
                     else if (obj is GameObject gameObject)
@@ -91,6 +93,8 @@ namespace BuilderTools
 
         private static void Load()
         {
+            logger = new Logger(HarmonyID);
+
             try
             {
                 holder = new GameObject();
@@ -98,68 +102,57 @@ namespace BuilderTools
 
                 UnityEngine.Object.DontDestroyOnLoad(holder);
 
-                config.TryGetConfig<bool>("open_inventory", ref BlockPicker.open_inventory);
-                config.TryGetConfig<bool>("global_filters", ref BlockPicker.global_filters);
-                var key = (int)BlockPicker.block_picker_key;
-                config.TryGetConfig<int>("block_picker_key", ref key);
-                BlockPicker.block_picker_key = (KeyCode)key;
-
-                config.TryGetConfig<bool>("clearOnCollapse", ref PaletteTextFilter.clearOnCollapse);
-
-                var key2 = (int)PhysicsInfo.centers_key;
-                config.TryGetConfig<int>("centers_key", ref key2);
-                PhysicsInfo.centers_key = (KeyCode)key2;
-
-                config.TryGetConfig<bool>("kbdCategroryKeys", ref kbdCategroryKeys);
+                configFile.BindConfig(config, "open_inventory");
+                configFile.BindConfig(config, "global_filters");
+                configFile.BindConfig(config, "block_picker_key");
+                configFile.BindConfig(config, "clearOnCollapse");
+                configFile.BindConfig(config, "centers_key");
+                configFile.BindConfig(config, "kbdCategroryKeys");
 
                 string modName = "Builder Tools";
-                OptionKey blockPickerKey = new OptionKey("Block Picker activation key", modName, BlockPicker.block_picker_key);
+                OptionKey blockPickerKey = new OptionKey("Block Picker activation key", modName, config.BlockPickerKey);
                 blockPickerKey.onValueSaved.AddListener(() =>
                 {
-                    BlockPicker.block_picker_key = blockPickerKey.SavedValue;
-                    config["block_picker_key"] = (int)BlockPicker.block_picker_key;
+                    configFile["block_picker_key"] = (int)blockPickerKey.SavedValue;
                 });
 
-                OptionToggle globalFilterToggle = new OptionToggle("Block Picker - Use global filters", modName, BlockPicker.global_filters);
+                OptionToggle globalFilterToggle = new OptionToggle("Block Picker - Use global filters", modName, config.global_filters);
                 globalFilterToggle.onValueSaved.AddListener(() =>
                 {
-                    BlockPicker.global_filters = globalFilterToggle.SavedValue;
-                    config["global_filters"] = BlockPicker.global_filters;
+                    configFile["global_filters"] = globalFilterToggle.SavedValue;
                 });
 
-                OptionToggle openInventoryToggle = new OptionToggle("Block Picker - Automatically open the inventory when picking a block", modName, BlockPicker.open_inventory);
+                OptionToggle openInventoryToggle = new OptionToggle("Block Picker - Automatically open the inventory when picking a block", modName, config.open_inventory);
                 openInventoryToggle.onValueSaved.AddListener(() =>
                 {
-                    BlockPicker.open_inventory = openInventoryToggle.SavedValue;
-                    config["open_inventory"] = BlockPicker.open_inventory;
+                    configFile["open_inventory"] = openInventoryToggle.SavedValue;
                 });
 
-                OptionToggle clearOnCollapse = new OptionToggle("Block Search - Clear filter when closing inventory", modName, PaletteTextFilter.clearOnCollapse);
+                OptionToggle clearOnCollapse = new OptionToggle("Block Search - Clear filter when closing inventory", modName, config.clearOnCollapse);
                 clearOnCollapse.onValueSaved.AddListener(() =>
                 {
-                    PaletteTextFilter.clearOnCollapse = clearOnCollapse.SavedValue;
-                    config["clearOnCollapse"] = PaletteTextFilter.clearOnCollapse;
+                    configFile["clearOnCollapse"] = clearOnCollapse.SavedValue;
                 });
 
-                OptionKey centersKey = new OptionKey("Open physics info menu (Ctrl + ?)", modName, PhysicsInfo.centers_key);
+                OptionKey centersKey = new OptionKey("Open physics info menu (Ctrl + ?)", modName, config.CentersKey);
                 centersKey.onValueSaved.AddListener(() =>
                 {
-                    PhysicsInfo.centers_key = centersKey.SavedValue;
-                    config["centers_key"] = (int)PhysicsInfo.centers_key;
+                    configFile["centers_key"] = (int)centersKey.SavedValue;
                 });
 
-                OptionToggle enableKbdCategroryKeys = new OptionToggle("Use numerical keys (1-9) to select block category", modName, kbdCategroryKeys);
+                OptionToggle enableKbdCategroryKeys = new OptionToggle("Use numerical keys (1-9) to select block category", modName, config.kbdCategroryKeys);
                 enableKbdCategroryKeys.onValueSaved.AddListener(() =>
                 {
-                    kbdCategroryKeys = enableKbdCategroryKeys.SavedValue;
-                    config["kbdCategroryKeys"] = kbdCategroryKeys;
+                    configFile["kbdCategroryKeys"] = enableKbdCategroryKeys.SavedValue;
                 });
 
-                NativeOptionsMod.onOptionsSaved.AddListener(() => { config.WriteConfigJsonFile(); });
+                NativeOptionsMod.onOptionsSaved.AddListener(() => { configFile.WriteConfigJsonFile(); });
 
                 SetupCOM();
+                UI.Init(BuilderToolsContainer.Contents);
                 holder.AddComponent<PhysicsInfo>();
                 holder.AddComponent<PaletteTextFilter>();
+                holder.AddComponent<BlockLine>();
             }
             catch (Exception e)
             {
@@ -168,7 +161,7 @@ namespace BuilderTools
         }
 
         private static bool Inited = false;
-        private static ModContainer BuilderToolsContainer;
+        internal static ModContainer BuilderToolsContainer;
 
         public override void EarlyInit()
         {
@@ -202,6 +195,21 @@ namespace BuilderTools
         public override void Init()
         {
             harmony.PatchAll(Assembly.GetExecutingAssembly());
+        }
+
+        public class Config
+        {
+            public bool open_inventory = false;
+            public bool global_filters = true;
+            public int block_picker_key = (int)KeyCode.LeftShift;
+            public bool clearOnCollapse = true;
+
+            public int centers_key = (int)KeyCode.M;
+            public bool kbdCategroryKeys = false;
+
+            public KeyCode BlockPickerKey => (KeyCode)block_picker_key;
+
+            public KeyCode CentersKey => (KeyCode)centers_key;
         }
     }
 }

@@ -9,23 +9,19 @@ namespace BuilderTools
 {
     internal class BlockPicker : MonoBehaviour
     {
-        internal static KeyCode block_picker_key = KeyCode.LeftShift;
-        internal static bool open_inventory = false;
-        internal static bool global_filters = true;
+        internal static Type T_UIPaletteBlockSelect = typeof(UIPaletteBlockSelect);
 
-        public static Type T_UIPaletteBlockSelect = typeof(UIPaletteBlockSelect);
-
-        private static readonly FieldInfo m_Grid = AccessTools.Field(T_UIPaletteBlockSelect, "m_Grid"),
+        internal static readonly FieldInfo m_Grid = AccessTools.Field(T_UIPaletteBlockSelect, "m_Grid"),
             m_CategoryToggles = AccessTools.Field(T_UIPaletteBlockSelect, "m_CategoryToggles"),
             m_CorpToggles = AccessTools.Field(T_UIPaletteBlockSelect, "m_CorpToggles"),
             m_Controller = AccessTools.Field(typeof(UICorpToggles), "m_Controller");
 
         private void Update()
         {
-            if (Input.GetMouseButtonDown(0) && Input.GetKey(block_picker_key) && ManPlayer.inst.PaletteUnlocked)
+            if (Input.GetMouseButtonDown(0) && Input.GetKey(Main.config.BlockPickerKey) && ManPlayer.inst.PaletteUnlocked)
             {
                 UIPaletteBlockSelect palette = Singleton.Manager<ManHUD>.inst.GetHudElement(ManHUD.HUDElementType.BlockPalette) as UIPaletteBlockSelect;
-                if (!palette.IsExpanded && open_inventory)
+                if (!palette.IsExpanded && Main.config.open_inventory)
                 {
                     var blockMenuSelection = Singleton.Manager<ManHUD>.inst.GetHudElement(ManHUD.HUDElementType.BlockMenuSelection) as UIBlockMenuSelection;
 
@@ -64,7 +60,7 @@ namespace BuilderTools
                         var corpToggles = m_CorpToggles.GetValue(palette) as UICorpToggles;
                         var controller = m_Controller.GetValue(corpToggles) as UITogglesController;
 
-                        if (global_filters)
+                        if (Main.config.global_filters)
                         {
                             catToggles.ToggleAllOn();
                             corpToggles.ToggleAllOn();
