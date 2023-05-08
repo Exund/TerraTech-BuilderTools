@@ -79,6 +79,9 @@ namespace BuilderTools
 
         private UIPaletteBlockSelect blockPalette;
         private Button lineButton;
+        private RectTransform lbr;
+
+        private bool showSettings = false;
 
         private static readonly MethodInfo SetGrabModeActive = AccessTools.Method(BlockPicker.T_UIPaletteBlockSelect, nameof(SetGrabModeActive));
 
@@ -137,142 +140,20 @@ namespace BuilderTools
             PreviewPool.RegenDummy();
         }
 
-        public void Update()
+        internal void OnPaletteCollapse(bool collapse)
         {
-            if (!blockPalette || !blockPalette.IsExpanded)
+            if (collapse)
             {
                 SetLineMode(false);
             }
+        }
 
-            if (Event.current.alt && Input.GetKeyDown(KeyCode.L))
+        public void Update()
+        {
+            if (blockPalette && blockPalette.IsExpanded && Event.current.alt && Input.GetKeyDown(KeyCode.L))
             {
                 SetLineMode(!line_mode);
             }
-        }
-
-        public void OnGUI()
-        {
-            if (!skin)
-            {
-                skin = GameObject.Instantiate(GUI.skin);
-                skin.font = UI.ExoRegular;
-                skin.label.normal.textColor = UI.normal_text;
-                skin.label.richText = true;
-                skin.label.fontStyle = FontStyle.BoldAndItalic;
-                skin.label.alignment = TextAnchor.MiddleLeft;
-                skin.label.padding.bottom = 0;
-            }
-
-            if (!useGUILayout)
-            {
-                return;
-            }
-
-            var tempskin = GUI.skin;
-            GUI.skin = skin;
-
-            var corners = new Vector3[4];
-            var rect = lineButton.GetComponent<RectTransform>();
-            rect.ForceUpdateRectTransforms();
-
-            rect.GetWorldCorners(corners);
-
-
-            Camera canvasCam = rect.GetComponentInParent<Canvas>().worldCamera;
-
-            var trc = RectTransformUtility.WorldToScreenPoint(canvasCam, corners[2]);
-            trc.y = Screen.height - trc.y;
-
-            var width = currentInterval.Type == IntVector3Interval.IterationType.Lines3D ? 250 : 100;
-            Vector2 position = trc + new Vector2(10, 0);
-
-            /*var mouse = Input.mousePosition;
-            mouse.y = Screen.height - mouse.y;
-
-            GUI.Label(new Rect(200, 0, Screen.width - 200, 50), 
-                "TRC: " + corners[2]
-                    + " TRCs: " + trc
-                    + " Mouse: " + mouse
-                    , new GUIStyle(GUI.skin.label) { fontStyle = FontStyle.Normal });*/
-
-            var size = new Vector2(width, 2*64);
-
-            GUI.color = new Color(1, 1, 1, 0.627f);
-            GUILayout.BeginArea(new Rect(position, size), UI.RBRC_panel);
-            GUI.color = Color.white;
-            {
-                GUILayout.BeginHorizontal();
-                {
-                    var mh = GUILayout.Height(64);
-                    var mw = GUILayout.Width(64);
-
-                    GUILayout.BeginVertical();
-                    {
-                        GUILayout.Label("Line type");
-
-                        var type = (IntVector3Interval.IterationType)GUILayout.SelectionGrid((int)currentInterval.Type, IterationTypes, 1, UI.Blue_btn, mw, mh);
-                        if (type != currentInterval.Type)
-                        {
-                            currentInterval.Type = type;
-                            Main.logger.Info("Interval type set to " + type);
-                        }
-                    }
-                    GUILayout.EndVertical();
-
-                    if (currentInterval.Type == IntVector3Interval.IterationType.Lines3D)
-                    {
-                        GUILayout.BeginVertical();
-                        {
-                            GUILayout.Label("Axes order");
-
-                            var prev = selectedAxisConfig;
-                            selectedAxisConfig = GUILayout.SelectionGrid(selectedAxisConfig, axisConfigsString, 3, UI.Blue_btn, mw, mh);
-                            if (prev != selectedAxisConfig)
-                            {
-                                var config = axisConfigs[selectedAxisConfig];
-
-                                currentInterval.SetAxisOrder(config.a, config.b, config.c);
-                            }
-                        }
-                        GUILayout.EndVertical();
-                    }
-                }
-                GUILayout.EndHorizontal();
-            }
-            GUILayout.EndArea();
-
-            //var height = currentInterval.Type == IntVector3Interval.IterationType.Lines3D ? 250 : 75;
-
-            //GUI.Window(ID, new Rect(Screen.width - 100, (Screen.height - height) * 0.5f, 100, height), DoWindow, "Block Lines");
-
-            GUI.skin = tempskin;
-        }
-
-        private void DoWindow(int id)
-        {
-            GUILayout.FlexibleSpace();
-            var type = (IntVector3Interval.IterationType)GUILayout.SelectionGrid((int)currentInterval.Type, IterationTypes, 1);
-            if (type != currentInterval.Type)
-            {
-                currentInterval.Type = type;
-                Main.logger.Info("Interval type set to " + type);
-            }
-
-            if (currentInterval.Type == IntVector3Interval.IterationType.Lines3D)
-            {
-                GUILayout.Label("Axis Order");
-
-                var prev = selectedAxisConfig;
-                selectedAxisConfig = GUILayout.SelectionGrid(selectedAxisConfig, axisConfigsString, 1);
-                if (prev != selectedAxisConfig)
-                {
-                    var config = axisConfigs[selectedAxisConfig];
-
-                    currentInterval.SetAxisOrder(config.a, config.b, config.c);
-                }
-            }
-
-            GUILayout.FlexibleSpace();
         }
 
         public void SetLineMode(bool enabled)
@@ -412,16 +293,139 @@ namespace BuilderTools
             colors.highlightedColor = colors.normalColor = UI.grey;
             lbb.colors = colors;
 
-            lbb.onClick.AddListener(() =>
-            {
-                BlockLine.inst.SetLineMode(!BlockLine.inst.line_mode);
-            });
+            lbb.onClick.AddListener(() => { BlockLine.inst.SetLineMode(!BlockLine.inst.line_mode); });
 
             var tooltip = lineButton.AddComponent<TooltipComponent>();
             tooltip.SetMode(UITooltipOptions.Default);
             tooltip.SetText("Line Mode");
 
             BlockLine.inst.lineButton = lbb;
+            BlockLine.inst.lbr = lbr;
+        }
+
+        public void OnGUI()
+        {
+            if (!skin)
+            {
+                skin = GameObject.Instantiate(GUI.skin);
+                skin.font = UI.ExoRegular;
+                skin.label.normal.textColor = UI.dark_grey;
+                skin.label.richText = true;
+                skin.label.fontStyle = FontStyle.BoldAndItalic;
+                skin.label.alignment = TextAnchor.MiddleLeft;
+                skin.label.clipping = TextClipping.Overflow;
+                skin.label.padding.bottom = 0;
+                skin.label.margin.bottom = 5;
+            }
+
+            if (!useGUILayout)
+            {
+                return;
+            }
+
+            var tempskin = GUI.skin;
+            GUI.skin = skin;
+
+            var position = GetSettingsPosition();
+            var width = currentInterval.Type == IntVector3Interval.IterationType.Lines3D ? 250 : 100;
+
+            var togglepos = position;
+
+            if (showSettings)
+            {
+                togglepos.x += width;
+            }
+
+            GUI.color = showSettings ? Color.white : UI.transparent_tint;
+            showSettings = GUI.Toggle(new Rect(togglepos, new Vector2(25, 25)), showSettings, "", UI.Expand_toggle);
+            GUI.color = Color.white;
+
+            if (showSettings)
+            {
+                var size = new Vector2(width, 1.5f * 64);
+                BlockLineSettings(position, size);
+            }
+
+            GUI.skin = tempskin;
+        }
+
+        private Vector2 GetSettingsPosition()
+        {
+            var corners = new Vector3[4];
+            lbr.ForceUpdateRectTransforms();
+            lbr.GetWorldCorners(corners);
+
+            Camera canvasCam = lbr.GetComponentInParent<Canvas>().worldCamera;
+
+            var trc = RectTransformUtility.WorldToScreenPoint(canvasCam, corners[2]);
+            trc.y = Screen.height - trc.y;
+
+            ((RectTransform)lbr.parent).GetWorldCorners(corners);
+
+            var parenttrc = RectTransformUtility.WorldToScreenPoint(canvasCam, corners[2]);
+
+            Vector2 position = new Vector2(parenttrc.x, trc.y);
+
+            return position;
+
+            /*var mouse = Input.mousePosition;
+            mouse.y = Screen.height - mouse.y;
+
+            GUI.Label(new Rect(200, 0, Screen.width - 200, 50), 
+                "TRC: " + corners[2]
+                    + " TRCs: " + trc
+                    + " Mouse: " + mouse
+                    , new GUIStyle(GUI.skin.label) { fontStyle = FontStyle.Normal });*/
+        }
+
+        private void BlockLineSettings(Vector2 position, Vector2 size)
+        {
+            GUI.color = UI.transparent_tint;
+            GUILayout.BeginArea(new Rect(position, size), UI.RBRC_panel);
+            GUI.color = Color.white;
+            {
+                GUILayout.BeginHorizontal();
+                {
+                    var mh = GUILayout.MinHeight(64);
+                    var mw = GUILayout.MinWidth(64);
+
+                    GUILayout.BeginVertical();
+                    {
+                        GUILayout.Label("Line type");
+                        GUILayout.FlexibleSpace();
+                        var type = (IntVector3Interval.IterationType)GUILayout.SelectionGrid((int)currentInterval.Type, IterationTypes, 1, UI.Blue_btn, mw, mh, GUILayout.MaxWidth(88));
+                        if (type != currentInterval.Type)
+                        {
+                            currentInterval.Type = type;
+                            Main.logger.Info("Interval type set to " + type);
+                        }
+                        GUILayout.FlexibleSpace();
+                    }
+                    GUILayout.EndVertical();
+
+                    if (currentInterval.Type == IntVector3Interval.IterationType.Lines3D)
+                    {
+                        GUILayout.BeginVertical();
+                        {
+                            GUILayout.Label("Axes order");
+                            GUILayout.FlexibleSpace();
+                            var prev = selectedAxisConfig;
+                            selectedAxisConfig = GUILayout.SelectionGrid(selectedAxisConfig, axisConfigsString, 3, UI.Blue_btn, mw, mh);
+                            if (prev != selectedAxisConfig)
+                            {
+                                var config = axisConfigs[selectedAxisConfig];
+
+                                currentInterval.SetAxisOrder(config.a, config.b, config.c);
+                                Main.logger.Info("Interval axis order set to " + config);
+                            }
+                            GUILayout.FlexibleSpace();
+                        }
+                        GUILayout.EndVertical();
+                    }
+                }
+                GUILayout.EndHorizontal();
+            }
+            GUILayout.EndArea();
         }
 
         public class Placement

@@ -70,6 +70,7 @@ namespace BuilderTools
                 private static void Postfix(ref bool __result)
                 {
                     PaletteTextFilter.OnPaletteCollapse(__result);
+                    BlockLine.inst.OnPaletteCollapse(__result);
                 }
             }
 

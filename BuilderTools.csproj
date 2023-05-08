@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -135,10 +135,10 @@ set e=$(TargetDir)..\&gt;nul
 
 echo Copying to game
 xcopy /S /Y /R "$(TargetFileName)" !modpath!
-echo Copying to Unity
-xcopy /S /Y /R "$(TargetFileName)" !unitypath!
+:: echo Copying to Unity
+:: xcopy /S /Y /R "$(TargetFileName)" !unitypath!
 
-start "" "$(TargetDir)"
+:: start "" "$(TargetDir)"
 start "" "%25USERPROFILE%25/Desktop/TTSMM"
 
 :: start "" "cmd /k timeout /t 2 &amp;&amp; taskkill /im devenv.exe"

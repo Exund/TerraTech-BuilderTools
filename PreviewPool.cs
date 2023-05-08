@@ -1,13 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using UnityEngine;
+using UnityEngine.Animations;
 
 namespace BuilderTools
 {
     public class PreviewPool
     {
-        private static readonly System.Reflection.MethodInfo RemoveAllBlocks = HarmonyLib.AccessTools.Method(typeof(BlockManager), nameof(RemoveAllBlocks));
+        private static readonly MethodInfo RemoveAllBlocks = HarmonyLib.AccessTools.Method(typeof(BlockManager), nameof(RemoveAllBlocks));
 
         private static readonly ManSpawn.TankSpawnParams dummySpawnParams;
 
@@ -15,7 +17,7 @@ namespace BuilderTools
 
         private static BlockManager dummyTable;
 
-        private static UnityEngine.Animations.ParentConstraint dummyParent;
+        private static ParentConstraint dummyParent;
 
         private static readonly List<BlockPlacementPreviewHandler.APConnection> m_BlockAPConnections = new List<BlockPlacementPreviewHandler.APConnection>();
 
@@ -63,9 +65,9 @@ namespace BuilderTools
             dummy.rbody.isKinematic = true;
             dummyTable = dummy.blockman;
 
-            dummyParent = dummy.gameObject.AddComponent<UnityEngine.Animations.ParentConstraint>();
+            dummyParent = dummy.gameObject.AddComponent<ParentConstraint>();
             dummyParent.constraintActive = true;
-            dummyParent.AddSource(new UnityEngine.Animations.ConstraintSource());
+            dummyParent.AddSource(new ConstraintSource());
             dummyParent.SetTranslationOffset(0, Vector3.zero);
             dummyParent.SetRotationOffset(0, Vector3.zero);
         }
@@ -196,7 +198,7 @@ namespace BuilderTools
 
             dummy.gameObject.SetActive(true);
 
-            dummyParent.SetSource(0, new UnityEngine.Animations.ConstraintSource()
+            dummyParent.SetSource(0, new ConstraintSource()
             {
                 sourceTransform = tech.trans,
                 weight = 1
@@ -276,7 +278,7 @@ namespace BuilderTools
         {
             if (dummyParent.sourceCount > 0)
             {
-                dummyParent.SetSource(0, new UnityEngine.Animations.ConstraintSource());
+                dummyParent.SetSource(0, new ConstraintSource());
             }
 
             ClearLastPlacements();
